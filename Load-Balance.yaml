@@ -14,6 +14,13 @@ proxy-providers:
       enable: true
       url: http://www.gstatic.com/generate_204
       interval: 180
+  SG FREE:
+    type: file
+    path: "./proxy_provider/Akun-SG-FREE.yaml"
+    health-check:
+      enable: true
+      url: http://www.gstatic.com/generate_204
+      interval: 180
   GAME:
     type: file
     path: "./proxy_provider/Akun-GAME.yaml"
@@ -36,6 +43,13 @@ proxy-groups:
   - SG
   url: http://www.gstatic.com/generate_204
   interval: 360
+- name: Jalur SG FREE
+  type: load-balance
+  strategy: round-robin
+  use:
+  - SG FREE
+  url: http://www.gstatic.com/generate_204
+  interval: 360
 - name: Jalur GAME
   type: url-test
   use:
@@ -45,26 +59,11 @@ proxy-groups:
 - name: Koneksi Direct
   type: select
   proxies:
-  - Direct Multi-WAN
+  - Direct
   - Jalur ID
   - Jalur SG
-- name: Direct Multi-WAN
-  type: select
-  proxies:
-  - Direct WAN A
-  - Direct WAN B
-  - Direct WAN C
-- name: Direct WAN A
-  type: select
-  interface-name: wwan0
-  proxies:
-  - DIRECT
-- name: Direct WAN B
-  type: select
-  interface-name: usb0
-  proxies:
-  - DIRECT
-- name: Direct WAN C
+  - Jalur SG FREE
+- name: Direct
   type: select
   interface-name: eth1
   proxies:
@@ -74,36 +73,35 @@ proxy-groups:
   proxies:
   - Jalur GAME
   - Koneksi Direct
-  - Direct WAN A
-  - Direct WAN B
-  - Direct WAN C
+  - Direct
 - name: Koneksi Gaming
   type: select
   proxies:
   - Jalur GAME
   - Koneksi Direct
-  - Direct WAN A
-  - Direct WAN B
-  - Direct WAN C
+  - Direct
 - name: Koneksi Ads
   type: select
   proxies:
   - REJECT
   - Jalur SG
   - Jalur ID
+  - Jalur SG FREE
 - name: Koneksi NSFW
   type: select
   proxies:
   - REJECT
   - Jalur SG
   - Jalur ID
+  - Jalur SG FREE
 - name: Koneksi Umum
   type: fallback
   lazy: false
   proxies:
   - Jalur SG
   - Jalur ID
-  - Direct Multi-WAN
+  - Jalur SG FREE
+  - Direct
   url: http://www.gstatic.com/generate_204
   interval: 30
 - name: Koneksi Indo
@@ -112,7 +110,8 @@ proxy-groups:
   proxies:
   - Jalur ID
   - Jalur SG
-  - Koneksi Direct
+  - Jalur SG FREE
+  - Direct
   url: http://www.gstatic.com/generate_204
   interval: 30
 - name: Koneksi Streaming
@@ -121,7 +120,8 @@ proxy-groups:
   proxies:
   - Jalur SG
   - Jalur ID
-  - Direct Multi-WAN
+  - Jalur SG FREE
+  - Direct
   url: http://www.gstatic.com/generate_204
   interval: 30
 - name: Koneksi Sosmed
@@ -130,7 +130,8 @@ proxy-groups:
   proxies:
   - Jalur ID
   - Jalur SG
-  - Direct Multi-WAN
+  - Jalur SG FREE
+  - Direct
   url: http://www.gstatic.com/generate_204
   interval: 30
 - name: Speedtest
@@ -138,16 +139,19 @@ proxy-groups:
   use:
     - ID
     - SG
+    - SG FREE
     - GAME
   proxies:
   - Jalur ID
   - Jalur SG
-  - Direct Multi-WAN
+  - Jalur SG FREE
+  - Direct
 - name: Custom
   type: select
   use:
     - ID
     - SG
+    - SG FREE
     - GAME
   proxies:
     - PASS
@@ -165,35 +169,38 @@ bind-address: "*"
 mode: rule
 log-level: silent
 ipv6: false
-unified-delay: false
+unified-delay: true
 global-client-fingerprint: none
 external-controller: 0.0.0.0:9090
 external-ui: "/usr/share/openclash/ui"
-secret: "123456"
+secret: '123456'
 profile:
   store-selected: true
   store-fake-ip: false
 sniffer:
   enable: true
-  force-dns-mapping: false
   parse-pure-ip: true
-  override-destination: false
-  sniff:
-    TLS:
-      ports: [443, 182-183, 853, 8443]
-    HTTP:
-      ports: [80, 8080-8880]
-      override-destination: true
   force-domain:
   - "+.netflix.com"
   - "+.nflxvideo.net"
   - "+.amazonaws.com"
-  - "+.media.dssott.com"
+  - "+.media.dssot.com"
   skip-domain:
   - "+.apple.com"
   - Mijia Cloud
   - "+.jd.com"
-  - dlg.io.mi.com
+  sniff:
+    TLS:
+      ports:
+      - 443
+      - 182-183
+      - 853
+      - 8443
+    HTTP:
+      ports:
+      - 80
+      - 8080-9090
+      override-destination: true
 dns:
   enable: true
   listen: 0.0.0.0:7874
@@ -213,7 +220,7 @@ dns:
   - 9.9.9.9
   - 192.168.8.1
   nameserver-policy:
-    "geosite:rule-indo":
+    geosite:rule-indo:
     - 1.0.0.1
     - 8.8.4.4
   proxy-server-nameserver:
@@ -333,7 +340,6 @@ rules:
 - GEOSITE,category-porn,Koneksi NSFW
 #Speedtest
 - GEOSITE,rule-speedtest,Speedtest
-- DST-PORT,8080,Speedtest
 - GEOSITE,rule-umum,Koneksi Umum
 #Zerotier
 - OR,((GEOSITE,rule-umum),(DST-PORT,9993/29994/40775/43215)),Koneksi Umum
@@ -370,15 +376,9 @@ rules:
 - DST-PORT,5008/8011/8700/10000/14050/14080/17000,Koneksi PortGames,udp
 #Stumble Guys
 - DST-PORT,5055-5058,Koneksi PortGames,udp
-#Honkai Impact 3rd
-- DST-PORT,16100/27015/27036,Koneksi PortGames,tcp
-- DST-PORT,27015/27031-27036,Koneksi PortGames,udp
 #Genshin Impact
 - DST-PORT,42472,Koneksi PortGames,tcp
 - DST-PORT,42472/22101-22102,Koneksi PortGames,udp
-#Honkai Star Rail
-- DST-PORT,23301,Koneksi PortGames,tcp
-- DST-PORT,23301,Koneksi PortGames,udp
 #Clash of Clans (COC) & Clash Royale
 - DST-PORT,9330-9340,Koneksi PortGames,tcp
 - DST-PORT,9330-9340,Koneksi PortGames,udp
@@ -394,7 +394,7 @@ rules:
 #Point Blank Mobile (PB-Mobile)
 - DST-PORT,44590-44610,Koneksi PortGames,tcp
 - DST-PORT,40000-40010,Koneksi PortGames,udp
-#LINE Let’s Get Rich
+#LINE Letâ€™s Get Rich
 - DST-PORT,10500-10515,Koneksi PortGames,tcp
 #Dream League Soccer
 - DST-PORT,60970-60980,Koneksi PortGames,udp
@@ -423,8 +423,6 @@ rules:
 #Honor of Kings
 - DST-PORT,5692/8085/8500/10000/10082/20000/25000/29134/31003,Koneksi PortGames,tcp
 - DST-PORT,5010/6650/8011/8700/20000/25000/29134/30000,Koneksi PortGames,udp
-#RPG Toram Online
-- DST-PORT,30100,Koneksi PortGames,udp
 #for ALL ports games
 - AND,((NOT,((RULE-SET,rule_umum))),(NETWORK,TCP)),Koneksi PortGames
 - AND,((NOT,((RULE-SET,rule_umum))),(NETWORK,UDP)),Koneksi PortGames
